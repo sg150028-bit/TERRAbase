@@ -32,7 +32,7 @@ const initialStress: StressState = {
   shielding: 3,
 };
 
-function App() {
+export default function App() {
   const [booted, setBooted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeBody, setActiveBody] = useState<Body | 'all'>('all');
@@ -40,17 +40,14 @@ function App() {
   const [stress, setStress] = useState<StressState>(initialStress);
   const [inspectSite, setInspectSite] = useState<AnalogueSite | null>(null);
 
-  // Crash-proof filtering that combines BOTH location tabs and real-time search
   const visibleSites = useMemo(() => {
     return (analogueSites || []).filter((site) => {
       if (!site) return false;
 
-      // Check body property safely regardless of casing or alternative key names
       const siteBody = (site.body || site.targetBody || '').toLowerCase();
       const currentFilter = (activeBody || 'all').toLowerCase();
       const matchesBody = currentFilter === 'all' || siteBody === currentFilter;
 
-      // Check search query across site name, location, and target body
       const query = (searchQuery || '').trim().toLowerCase();
       const matchesSearch =
         !query ||
@@ -101,3 +98,17 @@ function App() {
           <SiteGrid sites={visibleSites} searchQuery={searchQuery} onOpenSite={setInspectSite} />
           <HardwareStressTester stress={stress} onStressChange={setStress} searchQuery={searchQuery} />
           <ArchiveDecks />
+        </main>
+        <Footer sites={analogueSites} />
+      </div>
+
+      {inspectSite && (
+        <SiteInspectionModal
+          site={inspectSite}
+          onClose={() => setInspectSite(null)}
+          onLaunchArchive={launchArchive}
+        />
+      )}
+    </div>
+  );
+}
