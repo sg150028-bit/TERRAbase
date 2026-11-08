@@ -39,12 +39,4 @@ export default function App() {
   const [activeBody, setActiveBody] = useState<Body | 'all'>('all');
   const [selectedId, setSelectedId] = useState<string>(() => analogueSites?.[0]?.id ?? '');
   const [stress, setStress] = useState<StressState>(initialStress);
-  const [inspectSite, setInspectSite] = useState<AnalogueSite | null>(null);
-
-  const visibleSites = useMemo(() => {
-    if (!Array.isArray(analogueSites)) return [];
-
-    const query = searchQuery.trim().toLowerCase();
-
-    return analogueSites.filter((site) => {
-      if (!site) return false;
+  const [inspectSite, setInspectSite] = useState<AnalogueSite
