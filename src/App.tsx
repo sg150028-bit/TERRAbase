@@ -15,6 +15,7 @@ import { analogueSites, type AnalogueSite, type Body } from '@/data/analogueSite
 const ARCHIVE_LINKS: Record<string, string> = {
   mars: 'https://terrabase-martian-archive.framer.website/',
   lunar: 'https://terrabase-lunar-archive.framer.website/',
+  moon: 'https://terrabase-lunar-archive.framer.website/',
 };
 
 const initialStress: StressState = {
@@ -36,37 +37,60 @@ export default function App() {
   const [booted, setBooted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeBody, setActiveBody] = useState<Body | 'all'>('all');
-  const [selectedId, setSelectedId] = useState(analogueSites[0]?.id ?? '');
+  const [selectedId, setSelectedId] = useState<string>(() => analogueSites?.[0]?.id ?? '');
   const [stress, setStress] = useState<StressState>(initialStress);
   const [inspectSite, setInspectSite] = useState<AnalogueSite | null>(null);
 
+  // Bulletproof filter matching all possible data schemas
   const visibleSites = useMemo(() => {
-    return (analogueSites || []).filter((site) => {
+    if (!Array.isArray(analogueSites)) return [];
+
+    return analogueSites.filter((site) => {
       if (!site) return false;
 
-      const siteBody = (site.body || site.targetBody || '').toLowerCase();
-      const currentFilter = (activeBody || 'all').toLowerCase();
-      const matchesBody = currentFilter === 'all' || siteBody === currentFilter;
+      // Extract every possible body/target key safely
+      const rawBody = (site as any).body || (site as any).targetBody || (site as any).category || (site as any).target || '';
+      const siteBody = String(rawBody).toLowerCase();
+      const currentFilter = String(activeBody || 'all').toLowerCase();
 
-      const query = (searchQuery || '').trim().toLowerCase();
+      // Check body filter match (handles 'moon' vs 'lunar' interchangeably)
+      let matchesBody = currentFilter === 'all';
+      if (!matchesBody) {
+        if (currentFilter === 'moon' || currentFilter === 'lunar') {
+          matchesBody = siteBody.includes('moon') || siteBody.includes('lunar');
+        } else {
+          matchesBody = siteBody.includes(currentFilter);
+        }
+      }
+
+      // Safe search query matching
+      const query = String(searchQuery || '').trim().toLowerCase();
+      const siteName = String(site.name || '').toLowerCase();
+      const siteLoc = String(site.location || '').toLowerCase();
+      const siteTarget = String((site as any).targetSite || '').toLowerCase();
+
       const matchesSearch =
         !query ||
-        (site.name && site.name.toLowerCase().includes(query)) ||
-        (site.location && site.location.toLowerCase().includes(query)) ||
-        (site.targetSite && site.targetSite.toLowerCase().includes(query)) ||
+        siteName.includes(query) ||
+        siteLoc.includes(query) ||
+        siteTarget.includes(query) ||
         siteBody.includes(query);
 
       return matchesBody && matchesSearch;
     });
   }, [activeBody, searchQuery]);
 
-  const selectedSite = useMemo(
-    () => analogueSites.find((s) => s.id === selectedId) ?? visibleSites[0] ?? analogueSites[0],
-    [selectedId, visibleSites]
-  );
+  // Safe selection calculation so ComparisonMatrix NEVER receives null/undefined
+  const selectedSite = useMemo(() => {
+    if (!analogueSites || analogueSites.length === 0) return null;
+    const found = analogueSites.find((s) => s?.id === selectedId);
+    return found || visibleSites[0] || analogueSites[0] || null;
+  }, [selectedId, visibleSites]);
 
   const launchArchive = (site: AnalogueSite) => {
-    const url = ARCHIVE_LINKS[site.category] ?? ARCHIVE_LINKS[site.body === 'mars' ? 'mars' : 'lunar'];
+    if (!site) return;
+    const cat = String((site as any).category || site.body || '').toLowerCase();
+    const url = ARCHIVE_LINKS[cat] ?? (cat.includes('mars') ? ARCHIVE_LINKS.mars : ARCHIVE_LINKS.lunar);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -94,12 +118,18 @@ export default function App() {
             onSelect={setSelectedId}
             searchQuery={searchQuery}
           />
-          {selectedSite && <ComparisonMatrix site={selectedSite} />}
+          {selectedSite ? (
+            <ComparisonMatrix site={selectedSite} />
+          ) : (
+            <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-center text-sm text-slate-400">
+              No matching analogue sites found for this filter.
+            </div>
+          )}
           <SiteGrid sites={visibleSites} searchQuery={searchQuery} onOpenSite={setInspectSite} />
           <HardwareStressTester stress={stress} onStressChange={setStress} searchQuery={searchQuery} />
           <ArchiveDecks />
         </main>
-        <Footer sites={analogueSites} />
+        <Footer sites={analogueSites || []} />
       </div>
 
       {inspectSite && (
