@@ -44,13 +44,13 @@ export function Header({ searchQuery, onSearchChange, activeBody, onBodyChange }
               key={b.id}
               type="button"
               onClick={() => onBodyChange(b.id)}
-              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-200 ${
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all duration-200 focus:outline-none ${
                 activeBody === b.id
-                  ? 'bg-cyan-300/20 text-cyan-200 border border-cyan-300/40'
-                  : 'text-slate-400 border border-white/10 hover:border-cyan-300/30 hover:text-cyan-200'
+                  ? 'bg-cyan-300/20 text-cyan-200 border border-cyan-300/40 shadow-sm shadow-cyan-500/20'
+                  : 'text-slate-400 border border-white/10 hover:border-cyan-300/30 hover:text-cyan-200 bg-white/[0.02]'
               }`}
             >
-              [ {b.label} ]
+              {b.label}
             </button>
           ))}
         </div>
