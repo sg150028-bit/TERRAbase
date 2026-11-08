@@ -36,18 +36,36 @@ function App() {
   const [booted, setBooted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeBody, setActiveBody] = useState<Body | 'all'>('all');
-  const [selectedId, setSelectedId] = useState(analogueSites[0].id);
+  const [selectedId, setSelectedId] = useState(analogueSites[0]?.id ?? '');
   const [stress, setStress] = useState<StressState>(initialStress);
   const [inspectSite, setInspectSite] = useState<AnalogueSite | null>(null);
 
+  // Crash-proof filtering that combines BOTH location tabs and real-time search
   const visibleSites = useMemo(() => {
-    if (activeBody === 'all') return analogueSites;
-    return analogueSites.filter((s) => s.body === activeBody);
-  }, [activeBody]);
+    return (analogueSites || []).filter((site) => {
+      if (!site) return false;
+
+      // Check body property safely regardless of casing or alternative key names
+      const siteBody = (site.body || site.targetBody || '').toLowerCase();
+      const currentFilter = (activeBody || 'all').toLowerCase();
+      const matchesBody = currentFilter === 'all' || siteBody === currentFilter;
+
+      // Check search query across site name, location, and target body
+      const query = (searchQuery || '').trim().toLowerCase();
+      const matchesSearch =
+        !query ||
+        (site.name && site.name.toLowerCase().includes(query)) ||
+        (site.location && site.location.toLowerCase().includes(query)) ||
+        (site.targetSite && site.targetSite.toLowerCase().includes(query)) ||
+        siteBody.includes(query);
+
+      return matchesBody && matchesSearch;
+    });
+  }, [activeBody, searchQuery]);
 
   const selectedSite = useMemo(
-    () => analogueSites.find((s) => s.id === selectedId) ?? analogueSites[0],
-    [selectedId]
+    () => analogueSites.find((s) => s.id === selectedId) ?? visibleSites[0] ?? analogueSites[0],
+    [selectedId, visibleSites]
   );
 
   const launchArchive = (site: AnalogueSite) => {
@@ -79,23 +97,7 @@ function App() {
             onSelect={setSelectedId}
             searchQuery={searchQuery}
           />
-          <ComparisonMatrix site={selectedSite} />
+          {selectedSite && <ComparisonMatrix site={selectedSite} />}
           <SiteGrid sites={visibleSites} searchQuery={searchQuery} onOpenSite={setInspectSite} />
           <HardwareStressTester stress={stress} onStressChange={setStress} searchQuery={searchQuery} />
           <ArchiveDecks />
-        </main>
-        <Footer sites={analogueSites} />
-      </div>
-
-      {inspectSite && (
-        <SiteInspectionModal
-          site={inspectSite}
-          onClose={() => setInspectSite(null)}
-          onLaunchArchive={launchArchive}
-        />
-      )}
-    </div>
-  );
-}
-
-export default App;
